@@ -1,11 +1,14 @@
 #include "Game.h"
+#include "cstdio"
 
 const Uint8* state = SDL_GetKeyboardState(NULL);
 
 Game::Game()
+:mWindow(nullptr)
+,mRenderer(nullptr)
+,mIsRunning(true)
 {
-    mWindow = nullptr;
-    mIsRunning = true;
+
 }
 
 Game::~Game()
@@ -14,16 +17,15 @@ Game::~Game()
 
 bool Game::Initialize()
 {
+    
     int sdlResult = SDL_Init(SDL_INIT_VIDEO);
 
     if (sdlResult != 0)
     {
         SDL_Log("Unable to initialize SDL: %s", SDL_GetError());
         return false;
-    } else {
-    return true;
     }
-
+    
     mWindow = SDL_CreateWindow("ProciusEngine", // Window title
                              100,   // Top left x-coordinate of window
                              100,   // top left y-coordiante of window
@@ -33,10 +35,9 @@ bool Game::Initialize()
 
     if (!mWindow)
     {
+        printf("dont work");
         SDL_Log("Failed to create window: %s", SDL_GetError());
         return false;
-    } else {
-        return true;
     }
 
     mRenderer = SDL_CreateRenderer(
@@ -56,8 +57,10 @@ bool Game::Initialize()
 
 void Game::RunLoop()
 {
+    
     while (mIsRunning)
     {
+        
         ProcessInput();
         UpdateGame();
         GenerateOuput();
@@ -66,8 +69,8 @@ void Game::RunLoop()
 
 void Game::Shutdown()
 {
-    SDL_DestroyWindow(mWindow);
     SDL_DestroyRenderer(mRenderer);
+    SDL_DestroyWindow(mWindow);
 
     SDL_Quit();
 }

@@ -4,6 +4,7 @@ project(ProciusEngine)
 
 file(GLOB SOURCES src/*.cpp)
 find_package(SDL2 REQUIRED)
+set(CMAKE_BUILD_TYPE Debug)
 include_directories(${SDL2_INCLUDE_DIRS})
 
 add_executable(${PROJECT_NAME} ${SOURCES})
