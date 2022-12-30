@@ -56,6 +56,8 @@ bool Game::Initialize()
 
     mPaddlePos.x = 10.0f;
 	mPaddlePos.y = 768.0f/2.0f;
+    mPaddlePos2.x = 1000.0f;
+    mPaddlePos2.y = 768.0f/2.0f;
 	mBallPos.x = 1024.0f/2.0f;
 	mBallPos.y = 768.0f/2.0f;
 	mBallVel.x = -200.0f;
@@ -84,6 +86,23 @@ void Game::Shutdown()
     SDL_Quit();
 }
 
+void Game::AddActor(Actor *actor)
+{
+    // If updating actors, need to add to pending
+    if (mUpdatingActors)
+    {
+        mPendingActors.emplace_back(actor);
+    }
+    else
+    {
+        mActors.emplace_back(actor);
+    }
+}
+
+void Game::RemoveActor(Actor *actor)
+{
+}
+
 void Game::ProcessInput()
 {
     SDL_Event event;
@@ -108,6 +127,7 @@ void Game::ProcessInput()
     }
 
     mPaddleDir = 0;
+    mPaddleDir2 = 0;
 
     if (state[SDL_SCANCODE_W])
     {
@@ -119,11 +139,23 @@ void Game::ProcessInput()
         mPaddleDir += 1;
     }
 
+    if (state[SDL_SCANCODE_UP])
+    {
+        mPaddleDir2 -= 1;
+    }
+
+    if (state[SDL_SCANCODE_DOWN])
+    {
+        mPaddleDir2 += 1;
+    }
+
     // Bounce if needed
 	// Did we intersect with the paddle?
 	float diff = mPaddlePos.y - mBallPos.y;
+    float diff2 = mPaddlePos2.y - mBallPos.y;
 	// Take absolute value of difference
 	diff = (diff > 0.0f) ? diff : -diff;
+    diff2 = (diff2 > 0.0f) ? diff2 : -diff2;
 	if (
 		// Our y-difference is small enough
 		diff <= paddleH / 2.0f &&
@@ -131,6 +163,15 @@ void Game::ProcessInput()
 		mBallPos.x <= 25.0f && mBallPos.x >= 20.0f &&
 		// The ball is moving to the left
 		mBallVel.x < 0.0f)
+	{
+		mBallVel.x *= -1.0f;
+	} else if (
+		// Our y-difference is small enough
+		diff2 >= paddleH / 2.0f &&
+		// We are in the correct x-position
+		mBallPos.x >= 25.0f && mBallPos.x <= 20.0f &&
+		// The ball is moving to the right
+		mBallVel.x > 0.0f)
 	{
 		mBallVel.x *= -1.0f;
 	}
@@ -142,7 +183,7 @@ void Game::ProcessInput()
 	// Did the ball collide with the right wall?
 	else if (mBallPos.x >= (1024.0f - thickness) && mBallVel.x > 0.0f)
 	{
-		mBallVel.x *= -1.0f;
+		mIsRunning = false;
 	}
 	
 	// Did the ball collide with the top wall?
@@ -183,10 +224,53 @@ void Game::UpdateGame()
         {
             mPaddlePos.y = 768.0f - paddleH / 2.0f - thickness;
         }
+    } else if (mPaddleDir2 != 0)
+    {
+        mPaddlePos2.y += mPaddleDir2 * 300.0f * deltaTime;
+
+        if (mPaddlePos2.y < (paddleH/2.0f + thickness))
+        {
+            mPaddlePos2.y - paddleH / 2.0f + thickness;
+        }
+        else if (mPaddlePos2.y > (768 - paddleH/2.0f - thickness))
+        {
+            mPaddlePos2.y = 768.0f - paddleH / 2.0f - thickness;
+        } 
     }
 
     mBallPos.x += mBallVel.x * deltaTime;
     mBallPos.y += mBallVel.y * deltaTime;
+
+    // Update all actors
+    mUpdatingActors = true;
+    for (auto actor : mActors)
+    {
+        actor -> Update(deltaTime);
+    }
+    mUpdatingActors = false;
+
+    // Move any pending actors to mActors
+    for (auto pending : mPendingActors)
+    {
+        mActors.emplace_back(pending);
+    }
+    mPendingActors.clear();
+
+    // Add any dead actors to a temp vector
+    std::vector<Actor*> deadActors;
+    for (auto actor : mActors)
+    {
+        if(actor -> GetState() == Actor::EDead)
+        (
+            deadActors.emplace_back(actor);
+        )
+    }
+
+    // Delete dead actors (which removes them from mActors)
+    for (auto actor : deadActors)
+    {
+        delete actor;
+    }
 
 }
 
@@ -219,12 +303,6 @@ void Game::GenerateOuput()
 	wall.y = 768 - thickness;
 	SDL_RenderFillRect(mRenderer, &wall);
 	
-	// Draw right wall
-	wall.x = 1024 - thickness;
-	wall.y = 0;
-	wall.w = thickness;
-	wall.h = 1024;
-	SDL_RenderFillRect(mRenderer, &wall);
 	
 	// Draw paddle
 	SDL_Rect paddle{
@@ -234,6 +312,15 @@ void Game::GenerateOuput()
 		static_cast<int>(paddleH)
 	};
 	SDL_RenderFillRect(mRenderer, &paddle);
+
+    // Draw paddle
+	SDL_Rect paddle2{
+		static_cast<int>(mPaddlePos2.x),
+		static_cast<int>(mPaddlePos2.y - paddleH/2),
+		thickness,
+		static_cast<int>(paddleH)
+	};
+	SDL_RenderFillRect(mRenderer, &paddle2);
 	
 	// Draw ball
 	SDL_Rect ball{	
