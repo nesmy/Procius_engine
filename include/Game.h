@@ -1,6 +1,13 @@
 #pragma once
 #include "SDL/SDL.h"
 
+
+struct Vector2
+    {
+        float x;
+        float y;   /* data */
+    };
+
 class Game {
     public:
         Game();
@@ -20,6 +27,13 @@ class Game {
         // Window created by SDL
         SDL_Window* mWindow;
         SDL_Renderer* mRenderer;
+
+        Vector2 mPaddlePos;
+        Vector2 mBallPos;
+        Vector2 mBallVel;
+        Uint32 mTicksCount;
+        int mPaddleDir;
         // Game should vontinus to run
         bool mIsRunning; 
 };
+
